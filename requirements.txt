@@ -5,6 +5,9 @@ pandas
 matplotlib
 seaborn
 scikit-learn
+scipy
 xgboost
 lightgbm
 pyyaml
+tensorflow
+tfrecord
