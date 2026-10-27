@@ -13,7 +13,7 @@ data/processed/*
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 
-results/figures/*
+# results/figures/*
 results/metrics/*
 results/predictions/*
 !results/figures/.gitkeep
