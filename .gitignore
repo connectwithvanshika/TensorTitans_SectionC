@@ -14,8 +14,8 @@ data/processed/*
 !data/processed/.gitkeep
 
 # results/figures/*
-results/metrics/*
-results/predictions/*
+# results/metrics/*
+# results/predictions/*
 !results/figures/.gitkeep
 !results/metrics/.gitkeep
 !results/predictions/.gitkeep
