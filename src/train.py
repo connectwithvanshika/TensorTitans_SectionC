@@ -43,7 +43,9 @@ def train_lightgbm_model(X_train, y_train, X_val=None, y_val=None, params=None, 
         "scale_pos_weight": 10.0,
         "random_state": random_state,
         "verbose": -1,
-        "n_jobs": -1
+        "deterministic": True,
+        "force_row_wise": True,
+        "n_jobs": 1
     }
     if params:
         default_params.update(params)

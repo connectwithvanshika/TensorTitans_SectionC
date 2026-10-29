@@ -1,0 +1,4 @@
+Split,Maps read,Squares,Unobserved removed,Empty maps,Maps with fire,Fire rows,Sampled no-fire rows,Maps without fire,Rows from maps without fire,Rows used,Fire share (%),Fires also burning today,Burning today but not tomorrow
+train,30,122880,5729,0,10,62,620,20,76562,77244,0.08,10,104
+eval,10,40960,11168,1,1,39,390,8,25696,26125,0.15,0,88
+test,10,40960,8093,0,5,157,1590,5,12682,14429,1.09,28,22

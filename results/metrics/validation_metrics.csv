@@ -1,0 +1,5 @@
+Model,PR-AUC,ROC-AUC,Recall@FPR=5%,F1
+Persistence,0.0015,0.4983,0.0,0.003
+Logistic Regression,0.0008,0.1414,0.0,0.003
+LightGBM,0.0016,0.5175,0.0,0.0032
+XGBoost,0.0009,0.1989,0.0,0.0031

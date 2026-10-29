@@ -15,7 +15,7 @@
 | **Target Label (`FireMask`)** | Binary indicator: $1$ if pixel burns on day $t+1$, $0$ otherwise. | Derived from next-day VIIRS active fire detection. Pixel value $1.0$ indicates active fire. Value $0.0$ indicates unburned; $-1.0$ (uncertain/masked) is filtered during training. |
 | **Input Window** | Day $t$ current conditions and $t-1$ historical observations. | Weather, vegetation indices, drought, topography, and previous-day fire detection (`PrevFireMask` at day $t$). Target day $t+1$ is strictly excluded from feature extraction. |
 | **Geographic Scope** | Contiguous United States (CONUS). | Wildfire events recorded between 2012 and 2020. |
-| **Positive Class Definition** | Confirmed fire detection at day $t+1$ (`FireMask == 1.0`). | Severe class imbalance: positive burn pixels represent $< 0.3\%$ of eligible pixels. |
+| **Positive Class Definition** | Confirmed fire detection at day $t+1$ (`FireMask == 1.0`). | Severe class imbalance. In the maps we extracted, fire pixels are 0.05% (train), 0.13% (validation) and 0.48% (test) of observed pixels; see `results/metrics/row_counts.csv`. |
 | **Splitting Protocol** | Spatially and temporally isolated partitions (Event-based separation). | Fire events and observation windows are partitioned so no fire event or adjacent spatial boundary spans train, validation, and test splits. |
 
 ---

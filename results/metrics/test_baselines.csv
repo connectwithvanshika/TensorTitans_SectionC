@@ -1,0 +1,5 @@
+Method,PR-AUC,ROC-AUC,Times better than random
+Random guess,0.0109,0.5,1.0
+LightGBM (Group D),0.0109,0.4947,1.0
+Rule: burning today,0.1088,0.5884,10.0
+Rule: count burning neighbours,0.1816,0.6319,16.7

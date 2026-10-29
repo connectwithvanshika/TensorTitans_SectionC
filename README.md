@@ -40,14 +40,15 @@ Phase 1 establishes a fair, leakage-safe tabular machine learning benchmark usin
 │   ├── train.py                    # Persistence, Logistic Regression, LightGBM, XGBoost
 │   └── evaluate.py                 # Imbalance-aware PR-AUC, Recall@FPR, threshold tuning
 ├── results/
-│   ├── figures/                    # 13 high-resolution publication plots
-│   ├── metrics/                    # Saved evaluation logs
+│   ├── figures/                    # Plots saved by notebooks 02-08
+│   ├── metrics/                    # Saved metrics: validation, test, ablation, baselines, row counts
 │   ├── predictions/                # Validation and held-out test predictions
 │   └── model_comparison.csv        # Consolidated cross-model benchmark table
 ├── reports/
-│   ├── phase1_report.tex           # 10-section IEEE LaTeX research report
+│   ├── report.pdf                  # Phase 1 report
 │   └── references.bib              # BibTeX literature citations
-├── CONTRIBUTIONS.md                # 6-member provisional team workload matrix
+├── presentation.pdf                # Phase 1 presentation
+├── CONTRIBUTIONS.md                # Team contribution table
 └── requirements.txt                # Exact Python dependencies
 ```
 
@@ -78,20 +79,25 @@ The pipeline is designed to be executed sequentially:
 
 ## 4. Key Findings & Empirical Results
 
+All numbers below come from `results/model_comparison.csv` and `results/metrics/`.
+
 | Partition | Model | PR-AUC (Average Precision) | ROC-AUC | Recall @ 5% FPR |
 | :--- | :--- | :--- | :--- | :--- |
 | **Validation** | Persistence Baseline | 0.0015 | 0.4983 | 0.0000 |
-| **Validation** | Logistic Regression | 0.0008 | 0.0573 | 0.0000 |
-| **Validation** | LightGBM | 0.0016 | 0.5206 | 0.0000 |
-| **Validation** | XGBoost | 0.0010 | 0.2549 | 0.0000 |
-| **Test (Held-Out)** | **LightGBM (Group D Features)** | **0.0085** | **0.3948** | **0.0000** |
+| **Validation** | Logistic Regression | 0.0008 | 0.1414 | 0.0000 |
+| **Validation** | LightGBM | 0.0016 | 0.5175 | 0.0000 |
+| **Validation** | XGBoost | 0.0009 | 0.1989 | 0.0000 |
+| **Test (Held-Out)** | **LightGBM (Group D Features)** | **0.0109** | **0.4947** | **0.0000** |
+
+Random guessing scores PR-AUC 0.0015 on validation and 0.0109 on test (the fire rate), and ROC-AUC 0.5.
 
 ### Core Insights:
-1. **Severe Imbalance**: Wildfire burn pixels account for $< 3\%$ of pixels. Accuracy is deceptive; PR-AUC is the true diagnostic metric.
-2. **Feature Ablation Impact**: Basic weather features alone (Group A) lack spatial localization. Adding antecedent fire mask (`PrevFireMask`, Group B) and spatial neighborhood aggregates (Group D) yields the primary predictive performance.
-3. **Threshold Calibration**: The standard default threshold (0.5) detects almost zero burn pixels. Tuning the operating threshold on validation data (maximizing F1) restores detection capability.
+1. **Severe Imbalance**: Only 0.08% (train), 0.15% (validation) and 1.09% (test) of rows burn the next day. Always predicting "no fire" scores 98.91% accuracy on test, so accuracy is useless here and PR-AUC is the main metric.
+2. **The model did not learn the signal yet**: On the frozen test set LightGBM catches 0 of 157 fires (TN 14,176, FP 96, FN 157, TP 0), which is no better than random, and its accuracy (98.25%) is below always saying "no fire" (98.91%). LightGBM runs in deterministic mode, so these numbers are the same on every run. A simple rule that counts burning neighbours reaches PR-AUC 0.182, about 17x random, so the signal is in the data.
+3. **Feature groups**: On validation, PR-AUC stays near random for every feature group (A 0.0016, B 0.0019, C 0.0022, D 0.0016). With only 39 validation fires, all from one map, these differences are noise.
+4. **Main cause**: The model learned from only 62 fire rows. The next step is extracting many more maps per split.
 
 ---
 
 ## 5. Team Roles & Workload Integrity
-Detailed role allocations and contribution matrices are documented in [CONTRIBUTIONS.md](file:///Users/krishgarg/Desktop/untitled%20folder/CONTRIBUTIONS.md). All experimental metrics and figures are generated directly from reproducible pipeline executions.
+Detailed role allocations are documented in [CONTRIBUTIONS.md](CONTRIBUTIONS.md). All experimental metrics and figures are generated directly from reproducible pipeline executions.

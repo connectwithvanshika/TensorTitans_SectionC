@@ -1,0 +1,19 @@
+Feature,r train,r test
+elevation,0.002,0.285
+th,-0.015,0.101
+vs,0.001,-0.101
+tmmn,0.009,-0.02
+tmmx,0.009,0.066
+sph,0.009,-0.067
+pr,-0.004,-0.072
+pdsi,0.011,0.067
+NDVI,0.012,-0.013
+population,-0.002,-0.013
+erc,-0.003,0.198
+PrevFireMask,0.118,0.312
+temp_range,0.001,0.092
+wind_u,-0.007,0.089
+wind_v,-0.012,-0.068
+drought_fuel_index,-0.003,0.019
+fire_neighbor_3x3_sum,0.154,0.374
+fire_neighbor_5x5_sum,0.146,0.39

@@ -1,0 +1,5 @@
+Ablation Group,Feature Count,PR-AUC,ROC-AUC,Recall@FPR=5%,F1 Score
+Group_A,6,0.0016,0.301,0.0,0.0032
+Group_B,7,0.0019,0.5496,0.0,0.0039
+Group_C,12,0.0022,0.6577,0.0,0.0045
+Group_D,18,0.0016,0.5006,0.0,0.0031
