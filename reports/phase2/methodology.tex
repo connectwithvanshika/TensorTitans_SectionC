@@ -1,0 +1,27 @@
+\section{Methodology}
+\subsection{U-Net architecture}
+The network (Figure~\ref{fig:unet}) takes a $64\times64\times13$ input and returns a $64\times64\times1$ map of fire probabilities. The encoder has three levels with 16, 32 and 64 filters. Each level applies two $3\times3$ convolutions, each followed by batch normalisation \cite{ioffe2015batchnorm} and ReLU, and then a $2\times2$ max pool, so the map shrinks from 64 to 32, 16 and 8 pixels. The bottleneck has 128 filters at $8\times8$ with dropout 0.2 \cite{srivastava2014dropout}. The decoder upsamples back to $64\times64$; at every level the matching encoder output is joined to the upsampled map (skip connection), so edge detail is not lost. A final $1\times1$ convolution with a sigmoid gives the probability of fire at every pixel. The model has 491{,}553 parameters (1.88~MB).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{dl_unet_architecture.png}
+\caption{The U-Net used in this project.}
+\label{fig:unet}
+\end{figure*}
+
+\subsection{Loss}
+Let $y_i\in\{0,1\}$ be the true label and $p_i$ the predicted probability of pixel $i$, and let $N$ be the number of pixels in a batch. The loss is a weighted binary cross-entropy:
+\begin{equation}
+\mathcal{L} = -\frac{1}{N}\sum_{i} w_i\left[y_i\log p_i + (1-y_i)\log(1-p_i)\right],
+\end{equation}
+with $w_i = 3$ for fire pixels, $w_i=1$ for no-fire pixels and $w_i=0$ for unknown pixels. The weight 3 makes a missed fire cost more than a false alarm, because fire is only about 1\% of pixels.
+
+\subsection{Training setup}
+We use the AdamW optimiser \cite{loshchilov2019adamw} with learning rate $10^{-3}$ and weight decay $10^{-4}$, mini-batches of 32 maps and at most 25 epochs. The learning rate is halved when validation PR-AUC does not improve for 2 epochs. Training stops when validation PR-AUC has not improved for 5 epochs and the weights of the best epoch are restored. The random seed is fixed to 42, and two runs with the same seed gave identical predictions in a short check (1{,}000 maps, one epoch). The code uses Keras \cite{chollet2015keras} and runs on the CPU of a laptop (Apple M3).
+
+\subsection{Evaluation protocol}
+Scores are computed on all pixels with a known label. Our main metric is PR-AUC (average precision),
+\begin{equation}
+\mathrm{AP}=\sum_n (R_n-R_{n-1})P_n,
+\end{equation}
+where $P_n$ and $R_n$ are the precision and recall at the $n$-th threshold. A random guess scores the fire rate, so PR-AUC is only meaningful when it is clearly above that rate. We also report ROC-AUC, recall at 5\% false-alarm rate, precision, recall and F1. The decision threshold is the one with the best F1 on the validation set and is frozen before the test set is used. The test set is used once, for the final model. Two simple rules are scored on exactly the same pixels as baselines: ``burning today'' (the fire mask of today as the score) and ``count burning neighbours'' (the number of burning pixels in the $3\times3$ box around the pixel).
