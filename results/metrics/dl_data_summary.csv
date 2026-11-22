@@ -1,0 +1,4 @@
+split,maps,fire_pixels,no_fire_pixels,unknown_pixels,fire_rate_percent
+train,14979,658270,59254803,1440911,1.099
+eval,1877,102594,7397791,187807,1.368
+test,1689,84331,6643368,190445,1.253
