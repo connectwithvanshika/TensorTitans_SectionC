@@ -1,0 +1,46 @@
+\section{Dataset and Preprocessing}
+\subsection{Data and splits}
+NDWS contains 18{,}545 maps of size $64\times64$ at 1~km per pixel, covering the contiguous United States from 2012 to 2020. The authors provide the train, validation and test split as separate TFRecord files, and we keep it unchanged (Table~\ref{tab:splits}). In Phase 1 only 30 maps were used. Here every map of every split is used. Unknown pixels (label $-1$, caused by clouds or missing data) are not counted as ``no fire''; they get weight zero in the loss and are left out of every metric.
+
+\begin{table}[t]
+\centering
+\caption{Maps and fire pixels in each split.}
+\label{tab:splits}
+\footnotesize
+\begin{tabular}{lrrrr}
+\toprule
+Split & Maps & Fire pixels & No-fire pixels & Fire rate \\
+\midrule
+Train & 14{,}979 & 658{,}270 & 59{,}254{,}803 & 1.10\% \\
+Validation & 1{,}877 & 102{,}594 & 7{,}397{,}791 & 1.37\% \\
+Test & 1{,}689 & 84{,}331 & 6{,}643{,}368 & 1.25\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Input channels}
+There are 12 raw input layers: elevation, wind direction, wind speed, minimum and maximum temperature, specific humidity, precipitation, the Palmer drought index, vegetation (NDVI), population density, the energy release component and the fire mask of today. Wind direction is an angle, so $359^\circ$ and $1^\circ$ look far apart as numbers although they are nearly the same direction. The angle also tells where the wind comes \emph{from}. We therefore replace it with two vectors that point where the wind blows \emph{to}:
+\begin{equation}
+w_x = -v\sin\theta, \qquad w_y = -v\cos\theta,
+\end{equation}
+where $v$ is wind speed and $\theta$ the direction. Wind speed is kept, which gives 13 input channels. Unknown values in today's fire mask are set to 0. Figure~\ref{fig:sample} shows one map: the arrows point towards the east and south-east, which is where the fire grew the next day.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{dl_sample_map.png}
+\caption{One training map: elevation, maximum temperature, fire today with wind arrows (blowing to), and fire tomorrow (target).}
+\label{fig:sample}
+\end{figure*}
+
+\subsection{Normalisation without leakage}
+Every channel is clipped to its 0.1 to 99.9 percentile range, which removes extreme values, and then standardised to mean 0 and standard deviation 1. All clip limits, means and standard deviations are computed from the training split only and reused for validation and test. The fire mask stays 0 or 1.
+
+\subsection{Augmentation and regularisation}
+During training, a mini-batch is flipped left-right with probability 0.5 and up-down with probability 0.5. Flipping the map changes the direction of the wind, so a left-right flip also changes the sign of $w_x$ and an up-down flip changes the sign of $w_y$ (Figure~\ref{fig:flip}). Without this, the wind would point the wrong way in the flipped map. We do not rotate maps. Other regularisers are described in Section~IV.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{dl_wind_flip_check.png}
+\caption{A left-right flip changes the sign of $w_x$, so the wind still points towards the same side of the fire.}
+\label{fig:flip}
+\end{figure}
