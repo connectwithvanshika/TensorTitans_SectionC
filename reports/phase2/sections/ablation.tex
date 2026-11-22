@@ -1,0 +1,39 @@
+\section{Ablation Study}
+To see which design choices matter, we changed one thing at a time and measured validation PR-AUC. Training the full model takes about 31 minutes, so every run uses the same smaller budget: the first 4{,}000 training maps, at most 10 epochs, early stopping with patience 3 and the same seed. The reference run therefore scores 0.260, lower than the full model (0.298). The test set was not used. Table~\ref{tab:ablation} and Figure~\ref{fig:ablation} show the results.
+
+\begin{table}[t]
+\centering
+\caption{Ablation results (validation PR-AUC).}
+\label{tab:ablation}
+\footnotesize
+\begin{tabular}{lcc}
+\toprule
+Experiment & PR-AUC & Change \\
+\midrule
+Full U-Net (reference) & 0.260 & -- \\
+No augmentation & 0.236 & $-0.023$ \\
+Flips without wind fix & 0.255 & $-0.004$ \\
+No fire class weight & 0.233 & $-0.026$ \\
+Focal loss instead of weighted BCE & 0.231 & $-0.028$ \\
+Without fire today & 0.175 & $-0.084$ \\
+Without weather channels & 0.243 & $-0.017$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{dl_ablation.png}
+\caption{Ablation: validation PR-AUC when one component is changed.}
+\label{fig:ablation}
+\end{figure}
+
+\textbf{Fire today matters most.} Removing the fire mask of today drops PR-AUC by 0.084. It stays above random because the maps are centred on fires, so the other channels still hint where the fire is.
+
+\textbf{Loss.} Weighting fire pixels three times beats plain cross-entropy ($-0.026$) and focal loss ($-0.028$). Focal loss was designed for this kind of imbalance, but on our data the simple weight worked better.
+
+\textbf{Augmentation and weather.} Flips help ($-0.023$ without them), and weather channels help a little ($-0.017$ without them).
+
+\textbf{Wind fix.} Flipping without changing the wind is only 0.004 worse. This is too small to call a real effect from one seed, but changing the wind is still the physically correct thing to do.
+
+\textbf{Limits.} Each row is one run with one seed, and the differences between the smaller changes may be within random variation. The ranking of the large effects, especially the fire mask of today, is the reliable part.

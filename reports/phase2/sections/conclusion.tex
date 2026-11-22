@@ -1,0 +1,15 @@
+\section{Conclusion}
+We moved from a Phase 1 table model that learned nothing (test PR-AUC 0.011, equal to random, 62 training fire pixels) to a U-Net that reads whole maps and trains on all 14{,}979 maps (658{,}270 fire pixels). On a held-out test of 6.7 million pixels it reaches a PR-AUC of 0.356, 28 times the random level and about twice the best simple rule, and it catches 56\% of fire pixels at a precision of 32\%. The ablation shows that the fire mask of today matters most, and that class weighting, flip augmentation and weather channels each help.
+
+\subsection{Limitations}
+\begin{itemize}
+\item Every result comes from one training run with one seed, so we cannot give confidence intervals.
+\item The ablation uses a smaller budget than the final model, so only its ranking is meaningful.
+\item The decision threshold and early stopping use the same validation set.
+\item The comparison with the dataset paper is approximate because the pipelines differ.
+\item The output is smooth, so edge precision is limited (precision about 32\%).
+\item We did not check calibration, which \cite{kumar2025stochastic} recommends.
+\end{itemize}
+
+\subsection{Future work}
+The natural next steps are an Attention U-Net \cite{oktay2018attention}, a Dice-based loss \cite{milletari2016vnet}, several seeds for confidence intervals, a calibration check, and a proper stacked hybrid with a gradient-boosted model. We tried a quick draft of the hybrid before the final notebooks: it scored higher on validation but lower on test than the U-Net alone. Because the second model had only half of the validation maps to learn from and the script is not part of our final code, we do not claim it. A correct version needs out-of-fold predictions \cite{wolpert1992stacked}. Finally, datasets with several input days \cite{gerard2023wildfirespreadts} would make models with memory possible.
