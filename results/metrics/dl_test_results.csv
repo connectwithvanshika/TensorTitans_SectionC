@@ -1,0 +1,5 @@
+model,val_pr_auc,test_pr_auc,test_roc_auc,test_recall_at_5pct_fpr,threshold,test_precision,test_recall,test_f1,tp,fp,fn,tn
+Random guess,0.0137,0.0125,0.5,0.05,,,,,,,,
+Rule: burning today,0.0597,0.1065,0.6333,0.3048,1.0,0.3572,0.2728,0.3093,23003.0,41396.0,61328.0,6601972.0
+Rule: count burning neighbours,0.0945,0.1734,0.729,0.4905,1.0,0.2507,0.4734,0.3278,39919.0,119328.0,44412.0,6524040.0
+U-Net,0.299,0.3561,0.9438,0.7914,0.3428,0.3157,0.5613,0.4041,47338.0,102592.0,36993.0,6540776.0

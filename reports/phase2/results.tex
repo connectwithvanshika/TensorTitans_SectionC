@@ -1,0 +1,55 @@
+\section{Results}
+\subsection{Training}
+The U-Net trained for 18 epochs in about 31 minutes, and early stopping restored epoch 13, which had a validation PR-AUC of 0.298 (Figure~\ref{fig:curves}). Training PR-AUC kept rising (0.64 at epoch 18) while validation stayed near 0.29 to 0.30, which is mild overfitting; early stopping kept the best epoch. Training PR-AUC is also higher partly because fire pixels count three times there. Validation loss stays below training loss because dropout and augmentation are active only during training.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{dl_training_curves.png}
+\caption{Loss and PR-AUC per epoch. The dashed line marks the epoch kept by early stopping.}
+\label{fig:curves}
+\end{figure}
+
+\subsection{Held-out test performance}
+Table~\ref{tab:test} compares the U-Net with random guessing and the two simple rules on the same 6{,}727{,}699 test pixels, using thresholds chosen on validation. The test fire rate is 1.25\%, so a random guess scores a PR-AUC of 0.0125. The U-Net reaches 0.356, which is 28 times the random level and about twice the best rule (0.173). Its ROC-AUC is 0.944. With the threshold 0.343 it catches 47{,}338 of the 84{,}331 fire pixels (recall 56\%) with a precision of 32\%. At a 5\% false-alarm rate it catches 79\% of fire pixels, compared with 49\% for the neighbour rule. The Phase 1 LightGBM scored 0.011 (ROC-AUC 0.495) on its own sampled test set of 14{,}429 pixels, so this row is a reference and not a same-pixel comparison.
+
+\begin{table}[t]
+\centering
+\caption{Held-out test results (6.7 million pixels).}
+\label{tab:test}
+\footnotesize
+\begin{tabular}{lccccc}
+\toprule
+Model & PR-AUC & ROC-AUC & Recall & Prec. & F1 \\
+\midrule
+Random guess & 0.013 & 0.500 & -- & -- & -- \\
+Rule: burning today & 0.107 & 0.633 & 0.27 & 0.36 & 0.31 \\
+Rule: burning neighbours & 0.173 & 0.729 & 0.47 & 0.25 & 0.33 \\
+Phase 1 LightGBM$^{*}$ & 0.011 & 0.495 & 0.00 & 0.00 & 0.00 \\
+\textbf{U-Net} & \textbf{0.356} & \textbf{0.944} & \textbf{0.56} & \textbf{0.32} & \textbf{0.40} \\
+\bottomrule
+\multicolumn{6}{l}{\scriptsize $^{*}$Phase 1 test set (sampled), not the same pixels.}
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{dl_test_pr_and_confusion.png}
+\caption{Test precision-recall curves (left) and the U-Net confusion matrix (right).}
+\label{fig:prcm}
+\end{figure}
+
+\subsection{The accuracy trap}
+The U-Net has an accuracy of 97.93\%, but always predicting ``no fire'' scores 98.75\%. Accuracy therefore says nothing here, and we rely on PR-AUC and F1. The confusion matrix in Figure~\ref{fig:prcm} shows 6{,}540{,}776 correctly quiet pixels, 102{,}592 false alarms, 36{,}993 missed fire pixels and 47{,}338 caught fire pixels.
+
+\subsection{Example maps}
+Figure~\ref{fig:examples} shows test maps chosen by fire size (90th, 50th and 10th percentile among maps with fire tomorrow), not by hand. The U-Net places probability on the right areas and follows the direction of growth, but its output is smooth. It cannot draw the ragged edge of a real fire, which explains why precision is about 32\%.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\columnwidth]{dl_test_example_maps.png}
+\caption{Fire today, true fire tomorrow and U-Net probability for three test maps.}
+\label{fig:examples}
+\end{figure}
+
+\subsection{Comparison with the dataset paper}
+The dataset paper reports a test PR-AUC of about 0.284 for its convolutional autoencoder \cite{huot2022nextday}, and our persistence rule scores 0.107 against their 0.115. Our U-Net scores 0.356. Because the training and evaluation pipelines are not identical, we call our result comparable or better and not a direct win.
