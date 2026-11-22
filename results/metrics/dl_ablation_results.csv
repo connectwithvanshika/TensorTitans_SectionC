@@ -1,0 +1,8 @@
+experiment,val_pr_auc,epochs_run,minutes,change_vs_reference
+Full U-Net (reference),0.2595,10,5.1,0.0
+No augmentation,0.2365,10,5.3,-0.023
+Flips without wind fix,0.2553,10,4.8,-0.0042
+No fire class weight,0.2333,10,4.9,-0.0262
+Focal loss instead of weighted BCE,0.2314,10,5.0,-0.0281
+Without fire today (PrevFireMask),0.1754,10,231.3,-0.0841
+Without weather channels,0.2429,10,4.6,-0.0166
