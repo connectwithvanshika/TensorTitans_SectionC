@@ -1,0 +1,38 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\graphicspath{{../../results/figures/}}
+
+\begin{document}
+
+\title{Next-Day Wildfire Spread Prediction with a U-Net\\Phase 2: Deep Learning Report}
+
+\author{\IEEEauthorblockN{Vanshika, Riya, Krish, Nitanshu, Tejas}
+\IEEEauthorblockA{Team TensorTitans, Section C\\
+Machine Learning Course Project}}
+
+\maketitle
+
+\begin{abstract}
+We predict which 1~km squares will burn the next day using the Next Day Wildfire Spread dataset. Our Phase 1 tabular models learned nothing: with only 62 training fire pixels they scored a PR-AUC of 0.011, equal to random. In Phase 2 we train a small U-Net (491{,}553 parameters) on all 14{,}979 training maps (658{,}270 fire pixels), with wind as two vectors, masked unknown pixels, a weighted loss, flip augmentation that also flips the wind, dropout, weight decay and early stopping. On 6.7 million held-out test pixels the U-Net reaches a PR-AUC of 0.356, which is 28 times the random level and about twice the best simple rule, and it catches 56\% of fire pixels with 32\% precision. An ablation study shows that the fire mask of today matters most. All thresholds are chosen on validation data only.
+\end{abstract}
+
+\begin{IEEEkeywords}
+wildfire spread, U-Net, semantic segmentation, class imbalance, precision-recall
+\end{IEEEkeywords}
+
+\input{sections/introduction}
+\input{sections/related_work}
+\input{sections/dataset}
+\input{sections/methodology}
+\input{sections/results}
+\input{sections/ablation}
+\input{sections/conclusion}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

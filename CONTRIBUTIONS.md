@@ -2,7 +2,7 @@
 
 **Project:** Next Day Wildfire Spread Prediction via Tabular ML and Spatial Deep Learning  
 **Team:** TensorTitans, Section C  
-**Course:** Machine Learning Project — Phase 1
+**Course:** Machine Learning Project — Phase 1 and Phase 2
 
 ---
 
@@ -25,3 +25,30 @@
 - **Top-to-Bottom Execution**: Every notebook in `notebooks/` must execute end-to-end cleanly on the documented environment.
 - **Experimental Integrity**: All reported metrics and figures are grounded in verified experimental runs; results are never fabricated or manually overwritten.
 - **Leakage Prevention**: No feature utilizes information beyond day $t$ (end of observation cutoff).
+
+
+---
+
+## 3. Phase 2 (Deep Learning) Role Allocation
+
+Every member works on two things. Pairs share both of their pieces of work.
+
+| Team Member | Work 1 | Work 2 |
+| :--- | :--- | :--- |
+| **Vanshika** | Literature review (with Nitanshu) | Model training (with Nitanshu) |
+| **Nitanshu** | Literature review (with Vanshika) | Model training (with Vanshika) |
+| **Riya** | Data pipeline (with Tejas) | Ablation study (with Tejas) |
+| **Tejas** | Data pipeline (with Riya) | Ablation study (with Riya), report and README assembly |
+| **Krish** | Evaluation and validation | Phase 2 slides |
+
+### Deliverables by area
+
+| Area | Owners | Files |
+| :--- | :--- | :--- |
+| Literature review | Vanshika, Nitanshu | `literature_review/phase2_dl_literature.md`, `literature_review/phase2_model_choices.md`, `reports/phase2/sections/introduction.tex`, `related_work.tex` |
+| Data pipeline | Riya, Tejas | `src/dl_data.py`, `notebooks/09_dl_data_pipeline.ipynb`, `results/models/unet_norm.npz`, `results/metrics/dl_data_summary.csv`, `dl_normalization.csv`, `reports/phase2/sections/dataset.tex` |
+| Model training | Vanshika, Nitanshu | `src/dl_model.py`, `notebooks/10_unet_training.ipynb`, `results/models/unet.keras`, `results/metrics/dl_training_history.csv`, `results/figures/dl_unet_architecture.png`, `dl_training_curves.png`, `reports/phase2/sections/methodology.tex` |
+| Evaluation | Krish | `notebooks/11_unet_evaluation.ipynb`, `results/metrics/dl_test_results.csv`, `dl_test_metrics.json`, `results/predictions/dl_test_per_map.csv`, `reports/phase2/sections/results.tex` |
+| Ablation study | Riya, Tejas | `notebooks/12_unet_ablation.ipynb`, `results/metrics/dl_ablation_results.csv`, `results/figures/dl_ablation.png`, `reports/phase2/sections/ablation.tex`, `conclusion.tex` |
+| Slides | Krish | `phase2_presentation.pdf` |
+| Report and README assembly | Tejas | `reports/phase2/main.tex`, `references.bib`, `README.md`, `CONTRIBUTIONS.md` |
