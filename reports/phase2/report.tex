@@ -1,0 +1,542 @@
+\documentclass[10pt,letterpaper,twocolumn]{article}
+
+% ---------- Page layout (two-column, IEEE-like) ----------
+\usepackage[top=0.75in,bottom=0.9in,left=0.65in,right=0.65in,columnsep=0.25in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx}            % Times text and math
+\usepackage[scaled=0.9]{helvet}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{cite}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{1.2em}
+\setlength{\parskip}{0pt}
+\setlist{nosep,leftmargin=1.4em}
+\captionsetup{font=small,labelfont=small,labelsep=period,justification=justified,singlelinecheck=false}
+\captionsetup[table]{labelformat=simple,labelsep=newline,textfont=sc,justification=centering,font=footnotesize}
+\renewcommand{\thetable}{\Roman{table}}
+
+% ---------- IEEE-style headings ----------
+\titleformat{\section}{\centering\normalfont\small\scshape}{\thesection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+\titleformat{\subsection}{\normalfont\itshape}{\thesubsection.}{0.5em}{}
+\titlespacing*{\subsection}{0pt}{6pt}{2pt}
+\renewcommand{\thesection}{\Roman{section}}
+\renewcommand{\thesubsection}{\Alph{subsection}}
+
+\newcommand{\runin}[1]{\textit{#1}\ }
+
+\begin{document}
+
+% ---------- Title block ----------
+\twocolumn[
+\begin{center}
+  {\fontsize{20}{24}\selectfont Next-Day Wildfire Spread Prediction with a U-Net\par
+   Phase 2: Deep Learning Report\par}
+  \vspace{12pt}
+  {\large Vanshika, Riya, Krish, Nitanshu, Tejas\par}
+  \vspace{3pt}
+  {\itshape Team TensorTitans, Section C\par
+   Machine Learning Course Project\par}
+  \vspace{10pt}
+\end{center}
+]
+
+% ---------- Abstract ----------
+\noindent\textbf{\textit{Abstract}}---\textit{\textbf{We predict which 1\,km squares will burn the next day
+using the Next Day Wildfire Spread dataset. Our Phase~1 tabular models learned
+nothing: with only 62 training fire pixels they scored a PR-AUC of 0.011, equal to
+random. In Phase~2 we train a small U-Net (491,553 parameters) on all 14,979
+training maps (658,270 fire pixels), with wind as two vectors, masked unknown
+pixels, a weighted loss, flip augmentation that also flips the wind, dropout,
+weight decay and early stopping. On 6.7 million held-out test pixels the U-Net
+reaches a PR-AUC of 0.356, which is 28 times the random level and about twice
+the best simple rule, and it catches 56\% of fire pixels with 32\% precision. An
+ablation study shows that the fire mask of today matters most. All thresholds
+are chosen on validation data only.}}
+
+\medskip
+\noindent\textbf{\textit{Index Terms}}---\textit{\textbf{wildfire spread, U-Net,
+semantic segmentation, class imbalance, precision-recall}}
+
+% =====================================================
+\section{Introduction}
+Wildfires burn forests, homes and air quality, and a fire can change a lot within
+a single day. If a fire manager knows which places are likely to burn
+\textit{tomorrow}, they can send crews and warn people earlier. This project
+predicts, for every 1\,km square on a map, whether it will be on fire the next
+day.
+
+We use the Next Day Wildfire Spread (NDWS) dataset~\cite{huot2022}. Each sample
+is a $64\times64$ map with layers such as wind, temperature, humidity, drought,
+vegetation, terrain and the fire mask of today. The label is the fire mask of
+tomorrow. Fire is rare: only about 1.1\% of known pixels burn.
+
+\subsection{What Phase 1 taught us}
+In Phase~1 we turned each pixel into a row of a table and trained tree models.
+The result was honest but poor. Because of limited memory we used only 30 maps,
+which contained 62 fire pixels. On the held-out test the best model (LightGBM)
+reached a PR-AUC of 0.011, which is the same as a random guess, and it caught
+none of the 157 fire pixels in its sampled test set. Two simple rules,
+``tomorrow looks like today'' and ``count the burning neighbours'', did better
+(0.109 and 0.182 on that test set), so the signal was in the data but the
+tabular models could not use it. Two reasons stand out: a pixel-by-pixel table
+cannot see the shape of a fire, and 62 fire pixels are too few to learn from.
+
+\subsection{What Phase 2 does}
+Deep learning fixes both problems. A convolutional network reads the whole map,
+so it sees neighbours and shapes, and it can be trained on every map without
+building a table. Our contributions are:
+\begin{itemize}
+  \item A data pipeline that keeps all 18,545 maps (658,270 training fire pixels
+        instead of 62), builds wind as two vectors, ignores unknown pixels and
+        fits normalisation on the training split only.
+  \item A small U-Net with 491,553 parameters, trained on a laptop CPU in about
+        31 minutes, with a weighted loss, flip augmentation that also flips the
+        wind, dropout, weight decay and early stopping.
+  \item A held-out evaluation on 6.7 million test pixels with a threshold chosen
+        on validation. The U-Net reaches a test PR-AUC of 0.356, which is 28
+        times the random level and about twice the best simple rule.
+  \item An ablation study of seven design choices, each scored on validation
+        only.
+\end{itemize}
+The rest of the report is organised as follows. Section~II reviews related work,
+Section~III describes the data, Section~IV the model and training, Section~V the
+results, Section~VI the ablation and Section~VII concludes.
+
+% =====================================================
+\section{Related Work}
+\subsection{The NDWS dataset and its baselines}
+Huot et al.~\cite{huot2022} released the NDWS dataset and trained a
+convolutional autoencoder, logistic regression and a random forest. The
+autoencoder reached a test PR-AUC of about 0.284, the persistence rule about
+0.115, and the two non-deep models were close to each other and clearly below
+the network. We use this paper as our reference. Their training pipeline is not
+identical to ours, so we compare scores as ``comparable'' rather than claiming a
+win. Fitzgerald et al.~\cite{fitzgerald2023} built a U-Net with attention blocks
+for the same data, which confirms that U-Net style models are a sensible choice
+here.
+
+\subsection{U-Net and its variants}
+The U-Net~\cite{ronneberger2015} has an encoder that finds what is in the image,
+a decoder that finds where, and skip connections that carry fine detail across.
+It was designed for medical images and works with little data and heavy
+augmentation. Attention U-Net~\cite{oktay2018} adds gates on the skip
+connections so that the decoder focuses on useful regions. We use the plain
+U-Net and list the attention version as future work.
+
+\subsection{Losses for rare positives}
+When almost every pixel is negative, plain cross-entropy is dominated by easy
+negatives. Focal loss~\cite{lin2017} reduces the weight of easy pixels, and the
+Dice loss~\cite{milletari2016} rewards overlap with the true shape. We use
+weighted cross-entropy and test focal loss in our ablation, where the weighted
+version was better.
+
+\subsection{Evaluation under class imbalance}
+Saito and Rehmsmeier~\cite{saito2015} show that the precision-recall curve is
+more informative than the ROC curve when positives are rare, which is why our
+main metric is PR-AUC. Kumar et al.~\cite{kumar2025} argue that matching fire
+pixels is not the same as learning the random process behind fire and suggest
+checking calibration. We did not measure calibration and list it as future work.
+
+\begin{table}[!t]
+\caption{Maps and Fire Pixels in Each Split.}
+\label{tab:splits}
+\centering
+\footnotesize
+\begin{tabular}{lrrrr}
+\toprule
+Split & Maps & Fire pixels & No-fire pixels & Fire rate \\
+\midrule
+Train      & 14,979 & 658,270 & 59,254,803 & 1.10\% \\
+Validation &  1,877 & 102,594 &  7,397,791 & 1.37\% \\
+Test       &  1,689 &  84,331 &  6,643,368 & 1.25\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Time series and other model families}
+Models with memory, such as ConvLSTM~\cite{shi2015}, need a sequence of days.
+NDWS gives only one input day, whereas WildfireSpreadTS~\cite{gerard2023}
+provides full daily series for 607 fires, which is the right setting for such
+models. Vision transformers and Swin U-Net~\cite{dosovitskiy2021,cao2022}
+usually need much more data and a GPU than a $64\times64$ map and a laptop
+deadline allow. Stacking a second model on top of the network~\cite{wolpert1992}
+needs predictions on data the network has not seen, which makes it expensive to
+do correctly; we describe our early attempt in the conclusion.
+
+% =====================================================
+\section{Dataset and Preprocessing}
+\subsection{Data and splits}
+NDWS contains 18,545 maps of size $64\times64$ at 1\,km per pixel, covering the
+contiguous United States from 2012 to 2020. The authors provide the train,
+validation and test split as separate TFRecord files, and we keep it unchanged
+(Table~\ref{tab:splits}). In Phase~1 only 30 maps were used. Here every map of
+every split is used. Unknown pixels (label $-1$, caused by clouds or missing
+data) are not counted as ``no fire''; they get weight zero in the loss and are
+left out of every metric.
+
+\subsection{Input channels}
+There are 12 raw input layers: elevation, wind direction, wind speed, minimum and
+maximum temperature, specific humidity, precipitation, the Palmer drought index,
+vegetation (NDVI), population density, the energy release component and the fire
+mask of today. Wind direction is an angle, so $359^\circ$ and $1^\circ$ look far
+apart as numbers although they are nearly the same direction. The angle also
+tells where the wind comes from. We therefore replace it with two vectors that
+point where the wind blows \textit{to}:
+\begin{align}
+  w_x &= -v\sin\theta, \\
+  w_y &= -v\cos\theta,
+\end{align}
+where $v$ is wind speed and $\theta$ the direction. Wind speed is kept, which
+gives 13 input channels. Unknown values in today's fire mask are set to 0.
+Fig.~\ref{fig:sample} shows one map: the arrows point towards the east and
+south-east, which is where the fire grew the next day.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/fig1_sample_map.png}
+\caption{One training map: elevation, maximum temperature, fire today with wind
+arrows (blowing to), and fire tomorrow (target).}
+\label{fig:sample}
+\end{figure*}
+
+\subsection{Normalisation without leakage}
+Every channel is clipped to its 0.1 to 99.9 percentile range, which removes
+extreme values, and then standardised to mean 0 and standard deviation 1. All
+clip limits, means and standard deviations are computed from the training split
+only and reused for validation and test. The fire mask stays 0 or 1.
+
+\subsection{Augmentation and regularisation}
+During training, a mini-batch is flipped left-right with probability 0.5 and
+up-down with probability 0.5. Flipping the map changes the direction of the wind,
+so a left-right flip also changes the sign of $w_x$ and an up-down flip changes
+the sign of $w_y$ (Fig.~\ref{fig:flip}). Without this, the wind would point the
+wrong way in the flipped map. We do not rotate maps. Other regularisers are
+described in Section~IV.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig2_flip_wind.png}
+\caption{A left-right flip changes the sign of $w_x$, so the wind still points
+towards the same side of the fire.}
+\label{fig:flip}
+\end{figure}
+
+% =====================================================
+\section{Methodology}
+\subsection{U-Net architecture}
+The network (Fig.~\ref{fig:unet}) takes a $64\times64\times13$ input and returns
+a $64\times64\times1$ map of fire probabilities. The encoder has three levels
+with 16, 32 and 64 filters. Each level applies two $3\times3$ convolutions, each
+followed by batch normalisation~\cite{ioffe2015} and ReLU, and then a
+$2\times2$ max pool, so the map shrinks from 64 to 32, 16 and 8 pixels. The
+bottleneck has 128 filters at $8\times8$ with dropout 0.2~\cite{srivastava2014}.
+The decoder upsamples back to $64\times64$; at every level the matching encoder
+output is joined to the upsampled map (skip connection), so edge detail is not
+lost. A final $1\times1$ convolution with a sigmoid gives the probability of fire
+at every pixel. The model has 491,553 parameters (1.88\,MB).
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/fig3_unet.png}
+\caption{The U-Net used in this project.}
+\label{fig:unet}
+\end{figure*}
+
+\subsection{Loss}
+Let $y_i\in\{0,1\}$ be the true label and $p_i$ the predicted probability of
+pixel $i$, and let $N$ be the number of pixels in a batch. The loss is a weighted
+binary cross-entropy:
+\begin{equation}
+  \mathcal{L} = -\frac{1}{N}\sum_i w_i\bigl[y_i\log p_i + (1-y_i)\log(1-p_i)\bigr],
+\end{equation}
+with $w_i=3$ for fire pixels, $w_i=1$ for no-fire pixels and $w_i=0$ for unknown
+pixels. The weight 3 makes a missed fire cost more than a false alarm, because
+fire is only about 1\% of pixels.
+
+\subsection{Training setup}
+We use the AdamW optimiser~\cite{loshchilov2019} with learning rate $10^{-3}$ and
+weight decay $10^{-4}$, mini-batches of 32 maps and at most 25 epochs. The
+learning rate is halved when validation PR-AUC does not improve for 2 epochs.
+Training stops when validation PR-AUC has not improved for 5 epochs and the
+weights of the best epoch are restored. The random seed is fixed to 42, and two
+runs with the same seed gave identical predictions in a short check (1,000 maps,
+one epoch). The code uses Keras~\cite{chollet2015} and runs on the CPU of a
+laptop (Apple M3).
+
+\subsection{Evaluation protocol}
+Scores are computed on all pixels with a known label. Our main metric is PR-AUC
+(average precision),
+\begin{equation}
+  \mathrm{AP} = \sum_n (R_n - R_{n-1})\,P_n,
+\end{equation}
+where $P_n$ and $R_n$ are the precision and recall at the $n$-th threshold. A
+random guess scores the fire rate, so PR-AUC is only meaningful when it is
+clearly above that rate. We also report ROC-AUC, recall at 5\% false-alarm rate,
+precision, recall and F1. The decision threshold is the one with the best F1 on
+the validation set and is frozen before the test set is used. The test set is
+used once, for the final model. Two simple rules are scored on exactly the same
+pixels as baselines: ``burning today'' (the fire mask of today as the score) and
+``count burning neighbours'' (the number of burning pixels in the $3\times3$ box
+around the pixel).
+
+% =====================================================
+\section{Results}
+\subsection{Training}
+The U-Net trained for 18 epochs in about 31 minutes, and early stopping restored
+epoch 13, which had a validation PR-AUC of 0.298 (Fig.~\ref{fig:training}).
+Training PR-AUC kept rising (0.64 at epoch 18) while validation stayed near 0.29
+to 0.30, which is mild overfitting; early stopping kept the best epoch. Training
+PR-AUC is also higher partly because fire pixels count three times there.
+Validation loss stays below training loss because dropout and augmentation are
+active only during training.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig4_training_curves.png}
+\caption{Loss and PR-AUC per epoch. The dashed line marks the epoch kept by
+early stopping.}
+\label{fig:training}
+\end{figure}
+
+\subsection{Held-out test performance}
+Table~\ref{tab:results} compares the U-Net with random guessing and the two simple
+rules on the same 6,727,699 test pixels, using thresholds chosen on validation.
+The test fire rate is 1.25\%, so a random guess scores a PR-AUC of 0.0125. The
+U-Net reaches 0.356, which is 28 times the random level and about twice the best
+rule (0.173). Its ROC-AUC is 0.944. With the threshold 0.343 it catches 47,338 of
+the 84,331 fire pixels (recall 56\%) with a precision of 32\%. At a 5\%
+false-alarm rate it catches 79\% of fire pixels, compared with 49\% for the
+neighbour rule. The Phase~1 LightGBM scored 0.011 (ROC-AUC 0.495) on its own
+sampled test set of 14,429 pixels, so this row is a reference and not a
+same-pixel comparison.
+
+\begin{table}[!t]
+\caption{Held-Out Test Results (6.7 Million Pixels).}
+\label{tab:results}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccccc}
+\toprule
+Model & PR-AUC & ROC-AUC & Recall & Prec. & F1 \\
+\midrule
+Random guess              & 0.013 & 0.500 & --   & --   & --   \\
+Rule: burning today       & 0.107 & 0.633 & 0.27 & 0.36 & 0.31 \\
+Rule: burning neighbours  & 0.173 & 0.729 & 0.47 & 0.25 & 0.33 \\
+Phase 1 LightGBM$^{*}$    & 0.011 & 0.495 & 0.00 & 0.00 & 0.00 \\
+\textbf{U-Net}            & \textbf{0.356} & \textbf{0.944} & \textbf{0.56} & \textbf{0.32} & \textbf{0.40} \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+{\scriptsize $^{*}$Phase 1 test set (sampled), not the same pixels.}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig5_pr_confusion.png}
+\caption{Test precision-recall curves (left) and the U-Net confusion matrix
+(right).}
+\label{fig:prcm}
+\end{figure}
+
+\subsection{The accuracy trap}
+The U-Net has an accuracy of 97.93\%, but always predicting ``no fire'' scores
+98.75\%. Accuracy therefore says nothing here, and we rely on PR-AUC and F1. The
+confusion matrix in Fig.~\ref{fig:prcm} shows 6,540,776 correctly quiet pixels,
+102,592 false alarms, 36,993 missed fire pixels and 47,338 caught fire pixels.
+
+\subsection{Example maps}
+Fig.~\ref{fig:examples} shows test maps chosen by fire size (90th, 50th and 10th
+percentile among maps with fire tomorrow), not by hand. The U-Net places
+probability on the right areas and follows the direction of growth, but its output
+is smooth. It cannot draw the ragged edge of a real fire, which explains why
+precision is about 32\%.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.85\columnwidth]{figures/fig6_example_maps.png}
+\caption{Fire today, true fire tomorrow and U-Net probability for three test
+maps.}
+\label{fig:examples}
+\end{figure}
+
+\subsection{Comparison with the dataset paper}
+The dataset paper reports a test PR-AUC of about 0.284 for its convolutional
+autoencoder~\cite{huot2022}, and our persistence rule scores 0.107 against their
+0.115. Our U-Net scores 0.356. Because the training and evaluation pipelines are
+not identical, we call our result comparable or better and not a direct win.
+
+% =====================================================
+\section{Ablation Study}
+To see which design choices matter, we changed one thing at a time and measured
+validation PR-AUC. Training the full model takes about 31 minutes, so every run
+uses the same smaller budget: the first 4,000 training maps, at most 10 epochs,
+early stopping with patience 3 and the same seed. The reference run therefore
+scores 0.260, lower than the full model (0.298). The test set was not used.
+Table~\ref{tab:ablation} and Fig.~\ref{fig:ablation} show the results.
+
+\begin{table}[!t]
+\caption{Ablation Results (Validation PR-AUC).}
+\label{tab:ablation}
+\centering
+\footnotesize
+\begin{tabular}{lcc}
+\toprule
+Experiment & PR-AUC & Change \\
+\midrule
+Full U-Net (reference)            & 0.260 & --     \\
+No augmentation                   & 0.236 & $-0.023$ \\
+Flips without wind fix            & 0.255 & $-0.004$ \\
+No fire class weight              & 0.233 & $-0.026$ \\
+Focal loss instead of weighted BCE & 0.231 & $-0.028$ \\
+Without fire today                & 0.175 & $-0.084$ \\
+Without weather channels          & 0.243 & $-0.017$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig7_ablation.png}
+\caption{Ablation: validation PR-AUC when one component is changed.}
+\label{fig:ablation}
+\end{figure}
+
+\runin{Fire today matters most.} Removing the fire mask of today drops PR-AUC by
+0.084. It stays above random because the maps are centred on fires, so the other
+channels still hint where the fire is.
+
+\runin{Loss.} Weighting fire pixels three times beats plain cross-entropy
+($-0.026$) and focal loss ($-0.028$). Focal loss was designed for this kind of
+imbalance, but on our data the simple weight worked better.
+
+\runin{Augmentation and weather.} Flips help ($-0.023$ without them), and weather
+channels help a little ($-0.017$ without them).
+
+\runin{Wind fix.} Flipping without changing the wind is only 0.004 worse. This is
+too small to call a real effect from one seed, but changing the wind is still the
+physically correct thing to do.
+
+\runin{Limits.} Each row is one run with one seed, and the differences between the
+smaller changes may be within random variation. The ranking of the large effects,
+especially the fire mask of today, is the reliable part.
+
+% =====================================================
+\section{Conclusion}
+We moved from a Phase~1 table model that learned nothing (test PR-AUC 0.011,
+equal to random, 62 training fire pixels) to a U-Net that reads whole maps and
+trains on all 14,979 maps (658,270 fire pixels). On a held-out test of 6.7 million
+pixels it reaches a PR-AUC of 0.356, 28 times the random level and about twice the
+best simple rule, and it catches 56\% of fire pixels at a precision of 32\%. The
+ablation shows that the fire mask of today matters most, and that class
+weighting, flip augmentation and weather channels each help.
+
+\subsection{Limitations}
+\begin{itemize}
+  \item Every result comes from one training run with one seed, so we cannot give
+        confidence intervals.
+  \item The ablation uses a smaller budget than the final model, so only its
+        ranking is meaningful.
+  \item The decision threshold and early stopping use the same validation set.
+  \item The comparison with the dataset paper is approximate because the
+        pipelines differ.
+  \item The output is smooth, so edge precision is limited (precision about 32\%).
+  \item We did not check calibration, which~\cite{kumar2025} recommends.
+\end{itemize}
+
+\subsection{Future work}
+The natural next steps are an Attention U-Net~\cite{oktay2018}, a Dice-based
+loss~\cite{milletari2016}, several seeds for confidence intervals, a calibration
+check, and a proper stacked hybrid with a gradient-boosted model. We tried a quick
+draft of the hybrid before the final notebooks: it scored higher on validation but
+lower on test than the U-Net alone. Because the second model had only half of the
+validation maps to learn from and the script is not part of our final code, we do
+not claim it. A correct version needs out-of-fold predictions~\cite{wolpert1992}.
+Finally, datasets with several input days~\cite{gerard2023} would make models with
+memory possible.
+
+% =====================================================
+\begin{thebibliography}{17}
+\small
+\bibitem{huot2022} F.~Huot et al., ``Next Day Wildfire Spread: A Machine Learning
+Dataset to Predict Wildfire Spreading From Remote-Sensing Data,'' \textit{IEEE
+Transactions on Geoscience and Remote Sensing}, vol.~60, pp.~1--13, 2022. doi:
+10.1109/TGRS.2022.3192974.
+
+\bibitem{fitzgerald2023} J.~Fitzgerald et al., ``Paying Attention to Wildfire:
+Using U-Net with Attention Blocks on Multimodal Data for Next Day Prediction,''
+\textit{International Conference on Multimodal Interaction (ICMI)}, pp.~470--480,
+2023. doi: 10.1145/3577190.3614116.
+
+\bibitem{ronneberger2015} O.~Ronneberger, P.~Fischer, and T.~Brox, ``U-Net:
+Convolutional Networks for Biomedical Image Segmentation,'' \textit{Medical Image
+Computing and Computer-Assisted Intervention (MICCAI)}, pp.~234--241, 2015. doi:
+10.1007/978-3-319-24574-4\_28.
+
+\bibitem{oktay2018} O.~Oktay et al., ``Attention U-Net: Learning Where to Look for
+the Pancreas,'' \textit{Medical Imaging with Deep Learning (MIDL)}, 2018.
+arXiv:1804.03999.
+
+\bibitem{lin2017} T.~Y.~Lin et al., ``Focal Loss for Dense Object Detection,''
+\textit{IEEE International Conference on Computer Vision (ICCV)}, pp.~2980--2988,
+2017.
+
+\bibitem{milletari2016} F.~Milletari, N.~Navab, and S.~A.~Ahmadi, ``V-Net: Fully
+Convolutional Neural Networks for Volumetric Medical Image Segmentation,''
+\textit{International Conference on 3D Vision (3DV)}, pp.~565--571, 2016.
+
+\bibitem{saito2015} T.~Saito and M.~Rehmsmeier, ``The Precision-Recall Plot Is More
+Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced
+Datasets,'' \textit{PLoS ONE}, vol.~10, no.~3, pp.~e0118432, 2015. doi:
+10.1371/journal.pone.0118432.
+
+\bibitem{kumar2025} H.~Kumar et al., ``Has the Deep Neural Network Learned the
+Stochastic Process? An Evaluation Viewpoint,'' \textit{International Conference on
+Learning Representations (ICLR)}, 2025. arXiv:2402.15163.
+
+\bibitem{shi2015} X.~Shi et al., ``Convolutional LSTM Network: A Machine Learning
+Approach for Precipitation Nowcasting,'' \textit{Advances in Neural Information
+Processing Systems (NeurIPS)}, 2015.
+
+\bibitem{gerard2023} S.~Gerard, Y.~Zhao, and J.~Sullivan, ``WildfireSpreadTS: A
+Dataset of Multi-Modal Time Series for Wildfire Spread Prediction,'' \textit{Advances
+in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track},
+2023.
+
+\bibitem{dosovitskiy2021} A.~Dosovitskiy et al., ``An Image is Worth 16x16 Words:
+Transformers for Image Recognition at Scale,'' \textit{International Conference on
+Learning Representations (ICLR)}, 2021.
+
+\bibitem{cao2022} H.~Cao et al., ``Swin-Unet: Unet-like Pure Transformer for Medical
+Image Segmentation,'' \textit{European Conference on Computer Vision Workshops
+(ECCVW)}, pp.~205--218, 2022.
+
+\bibitem{wolpert1992} D.~H.~Wolpert, ``Stacked Generalization,'' \textit{Neural
+Networks}, vol.~5, no.~2, pp.~241--259, 1992.
+
+\bibitem{ioffe2015} S.~Ioffe and C.~Szegedy, ``Batch Normalization: Accelerating Deep
+Network Training by Reducing Internal Covariate Shift,'' \textit{International
+Conference on Machine Learning (ICML)}, pp.~448--456, 2015.
+
+\bibitem{srivastava2014} N.~Srivastava et al., ``Dropout: A Simple Way to Prevent
+Neural Networks from Overfitting,'' \textit{Journal of Machine Learning Research},
+vol.~15, no.~56, pp.~1929--1958, 2014.
+
+\bibitem{loshchilov2019} I.~Loshchilov and F.~Hutter, ``Decoupled Weight Decay
+Regularization,'' \textit{International Conference on Learning Representations
+(ICLR)}, 2019.
+
+\bibitem{chollet2015} F.~Chollet et al., ``Keras,'' \url{https://keras.io}, 2015.
+\end{thebibliography}
+
+\end{document}
