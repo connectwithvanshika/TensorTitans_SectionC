@@ -1,0 +1,18 @@
+\section{Introduction}
+Wildfires burn forests, homes and air quality, and a fire can change a lot within a single day. If a fire manager knows which places are likely to burn \emph{tomorrow}, they can send crews and warn people earlier. This project predicts, for every 1~km square on a map, whether it will be on fire the next day.
+
+We use the Next Day Wildfire Spread (NDWS) dataset \cite{huot2022nextday}. Each sample is a $64\times64$ map with layers such as wind, temperature, humidity, drought, vegetation, terrain and the fire mask of today. The label is the fire mask of tomorrow. Fire is rare: only about 1.1\% of known pixels burn.
+
+\subsection{What Phase 1 taught us}
+In Phase 1 we turned each pixel into a row of a table and trained tree models. The result was honest but poor. Because of limited memory we used only 30 maps, which contained 62 fire pixels. On the held-out test the best model (LightGBM) reached a PR-AUC of 0.011, which is the same as a random guess, and it caught none of the 157 fire pixels in its sampled test set. Two simple rules, ``tomorrow looks like today'' and ``count the burning neighbours'', did better (0.109 and 0.182 on that test set), so the signal was in the data but the tabular models could not use it. Two reasons stand out: a pixel-by-pixel table cannot see the shape of a fire, and 62 fire pixels are too few to learn from.
+
+\subsection{What Phase 2 does}
+Deep learning fixes both problems. A convolutional network reads the whole map, so it sees neighbours and shapes, and it can be trained on every map without building a table. Our contributions are:
+\begin{itemize}
+\item A data pipeline that keeps all 18{,}545 maps (658{,}270 training fire pixels instead of 62), builds wind as two vectors, ignores unknown pixels and fits normalisation on the training split only.
+\item A small U-Net with 491{,}553 parameters, trained on a laptop CPU in about 31 minutes, with a weighted loss, flip augmentation that also flips the wind, dropout, weight decay and early stopping.
+\item A held-out evaluation on 6.7 million test pixels with a threshold chosen on validation. The U-Net reaches a test PR-AUC of 0.356, which is 28 times the random level and about twice the best simple rule.
+\item An ablation study of seven design choices, each scored on validation only.
+\end{itemize}
+
+The rest of the report is organised as follows. Section~II reviews related work, Section~III describes the data, Section~IV the model and training, Section~V the results, Section~VI the ablation and Section~VII concludes.

@@ -1,0 +1,15 @@
+\section{Related Work}
+\subsection{The NDWS dataset and its baselines}
+Huot et al.\ \cite{huot2022nextday} released the NDWS dataset and trained a convolutional autoencoder, logistic regression and a random forest. The autoencoder reached a test PR-AUC of about 0.284, the persistence rule about 0.115, and the two non-deep models were close to each other and clearly below the network. We use this paper as our reference. Their training pipeline is not identical to ours, so we compare scores as ``comparable'' rather than claiming a win. Fitzgerald et al.\ \cite{fitzgerald2023paying} built a U-Net with attention blocks for the same data, which confirms that U-Net style models are a sensible choice here.
+
+\subsection{U-Net and its variants}
+The U-Net \cite{ronneberger2015unet} has an encoder that finds what is in the image, a decoder that finds where, and skip connections that carry fine detail across. It was designed for medical images and works with little data and heavy augmentation. Attention U-Net \cite{oktay2018attention} adds gates on the skip connections so that the decoder focuses on useful regions. We use the plain U-Net and list the attention version as future work.
+
+\subsection{Losses for rare positives}
+When almost every pixel is negative, plain cross-entropy is dominated by easy negatives. Focal loss \cite{lin2017focal} reduces the weight of easy pixels, and the Dice loss \cite{milletari2016vnet} rewards overlap with the true shape. We use weighted cross-entropy and test focal loss in our ablation, where the weighted version was better.
+
+\subsection{Evaluation under class imbalance}
+Saito and Rehmsmeier \cite{saito2015precision} show that the precision-recall curve is more informative than the ROC curve when positives are rare, which is why our main metric is PR-AUC. Kumar et al.\ \cite{kumar2025stochastic} argue that matching fire pixels is not the same as learning the random process behind fire and suggest checking calibration. We did not measure calibration and list it as future work.
+
+\subsection{Time series and other model families}
+Models with memory, such as ConvLSTM \cite{shi2015convlstm}, need a sequence of days. NDWS gives only one input day, whereas WildfireSpreadTS \cite{gerard2023wildfirespreadts} provides full daily series for 607 fires, which is the right setting for such models. Vision transformers and Swin U-Net \cite{dosovitskiy2021vit,cao2022swinunet} usually need much more data and a GPU than a $64\times64$ map and a laptop deadline allow. Stacking a second model on top of the network \cite{wolpert1992stacked} needs predictions on data the network has not seen, which makes it expensive to do correctly; we describe our early attempt in the conclusion.
